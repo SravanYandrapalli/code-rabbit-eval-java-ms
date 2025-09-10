@@ -8,21 +8,22 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$headers = @{ 'User-Agent'='coderabbit-fetch'; 'Accept'='application/vnd.github+json' }
+if ($env:GITHUB_TOKEN) { $headers.Authorization = "Bearer $($env:GITHUB_TOKEN)" }
+
 if (-not $PrNumber) {
-    $prs = Invoke-RestMethod -Headers @{ 'User-Agent'='coderabbit-fetch'; 'Accept'='application/vnd.github+json' } -Uri "https://api.github.com/repos/$Owner/$Repo/pulls?state=open"
+    $prs = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/pulls?state=open"
     if (-not $prs) {
-        $prs = Invoke-RestMethod -Headers @{ 'User-Agent'='coderabbit-fetch'; 'Accept'='application/vnd.github+json' } -Uri "https://api.github.com/repos/$Owner/$Repo/pulls?state=all&per_page=1&sort=created&direction=desc"
+        $prs = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/pulls?state=all&per_page=1&sort=created&direction=desc"
     }
     $pr = $prs | Select-Object -First 1
+    if (-not $pr) { Write-Warning "No PRs found for $Owner/$Repo"; exit 0 }
     $PrNumber = $pr.number
 }
 
-$headers = @{ 'User-Agent'='coderabbit-fetch'; 'Accept'='application/vnd.github+json' }
-if ($env:GITHUB_TOKEN) {
-    $headers.Authorization = "Bearer $($env:GITHUB_TOKEN)"
-}
-
-New-Item -ItemType Directory -Force -Path 'docs/CodeReview/pr1-suggested-patches' | Out-Null
+$outPrefix = "docs/CodeReview/${OutputPrefix}"
+New-Item -ItemType Directory -Force -Path 'docs/CodeReview' | Out-Null
+New-Item -ItemType Directory -Force -Path "${outPrefix}-suggested-patches" | Out-Null
 
 $pr = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/pulls/$PrNumber"
 $issueComments = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/issues/$PrNumber/comments"
@@ -39,8 +40,8 @@ $obj = [PSCustomObject]@{
     fetchedAt = [DateTime]::UtcNow
 }
 
-$reportPath = "docs/CodeReview/${OutputPrefix}-coderabbit-report.json"
-$summaryPath = "docs/CodeReview/${OutputPrefix}-coderabbit-summary.md"
+$reportPath = "${outPrefix}-coderabbit-report.json"
+$summaryPath = "${outPrefix}-coderabbit-summary.md"
 
 $obj | ConvertTo-Json -Depth 12 | Out-File -Encoding UTF8 $reportPath
 
