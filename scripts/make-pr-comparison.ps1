@@ -1,7 +1,8 @@
 param(
     [string]$PR1 = 'docs/CodeReview/pr1-coderabbit-summary.md',
     [string]$PR2 = 'docs/CodeReview/pr2-coderabbit-summary.md',
-    [string]$Out = 'docs/CodeReview/comparison-pr1-vs-pr2.md'
+    [string]$Out = 'docs/CodeReview/comparison-pr1-vs-pr2.md',
+    [string]$Title = 'Comparison: PR1 vs PR2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,7 +22,7 @@ function Take-Lines([string]$text, [int]$max){
 }
 
 $cmp = @()
-$cmp += "# Comparison: PR1 vs PR2"
+$cmp += ("# " + $Title)
 $cmp += ""
 $cmp += "## PR1 Summary (excerpt)"
 $cmp += (Take-Lines -text $a -max 30)

@@ -2,7 +2,8 @@
 param(
     [string]$Owner = "SravanYandrapalli",
     [string]$Repo = "code-rabbit-eval-java-ms",
-    [int]$PrNumber
+    [int]$PrNumber,
+    [string]$OutputPrefix = "pr"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,7 +39,10 @@ $obj = [PSCustomObject]@{
     fetchedAt = [DateTime]::UtcNow
 }
 
-$obj | ConvertTo-Json -Depth 12 | Out-File -Encoding UTF8 'docs/CodeReview/pr1-coderabbit-report.json'
+$reportPath = "docs/CodeReview/${OutputPrefix}-coderabbit-report.json"
+$summaryPath = "docs/CodeReview/${OutputPrefix}-coderabbit-summary.md"
+
+$obj | ConvertTo-Json -Depth 12 | Out-File -Encoding UTF8 $reportPath
 
 $allBodies = @()
 if ($issueComments) { $allBodies += ($issueComments | ForEach-Object { $_.body }) }
@@ -63,5 +67,5 @@ foreach ($b in $allBodies) {
     }
 }
 
-$lines -join "`n" | Out-File -Encoding UTF8 'docs/CodeReview/pr1-coderabbit-summary.md'
-Write-Host "Saved docs/CodeReview/pr1-coderabbit-report.json and docs/CodeReview/pr1-coderabbit-summary.md for PR #$PrNumber"
+$lines -join "`n" | Out-File -Encoding UTF8 $summaryPath
+Write-Host "Saved $reportPath and $summaryPath for PR #$PrNumber"
