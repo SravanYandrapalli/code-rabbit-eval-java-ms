@@ -1,0 +1,12 @@
+# Default owners
+* @SravanYandrapalli
+
+# Java source
+src/main/java/** @SravanYandrapalli
+src/test/java/** @SravanYandrapalli
+
+# Policy/docs/scripts
+docs/** @SravanYandrapalli
+scripts/** @SravanYandrapalli
+
+
