@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+app:
+  # Placeholder. Configure via environment variable APP_SECRET.
+  secret: ${APP_SECRET:}
+
+spring:
+  application:
+    name: code-rabbit-eval-java-microservice
+
+
