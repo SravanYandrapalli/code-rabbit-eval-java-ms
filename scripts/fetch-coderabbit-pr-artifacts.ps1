@@ -1,0 +1,67 @@
+# Requires: public repo (no auth) or a GitHub token in $env:GITHUB_TOKEN for higher rate limits
+param(
+    [string]$Owner = "SravanYandrapalli",
+    [string]$Repo = "code-rabbit-eval-java-ms",
+    [int]$PrNumber
+)
+
+$ErrorActionPreference = 'Stop'
+
+if (-not $PrNumber) {
+    $prs = Invoke-RestMethod -Headers @{ 'User-Agent'='coderabbit-fetch'; 'Accept'='application/vnd.github+json' } -Uri "https://api.github.com/repos/$Owner/$Repo/pulls?state=open"
+    if (-not $prs) {
+        $prs = Invoke-RestMethod -Headers @{ 'User-Agent'='coderabbit-fetch'; 'Accept'='application/vnd.github+json' } -Uri "https://api.github.com/repos/$Owner/$Repo/pulls?state=all&per_page=1&sort=created&direction=desc"
+    }
+    $pr = $prs | Select-Object -First 1
+    $PrNumber = $pr.number
+}
+
+$headers = @{ 'User-Agent'='coderabbit-fetch'; 'Accept'='application/vnd.github+json' }
+if ($env:GITHUB_TOKEN) {
+    $headers.Authorization = "Bearer $($env:GITHUB_TOKEN)"
+}
+
+New-Item -ItemType Directory -Force -Path 'docs/CodeReview/pr1-suggested-patches' | Out-Null
+
+$pr = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/pulls/$PrNumber"
+$issueComments = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/issues/$PrNumber/comments"
+$reviewComments = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/pulls/$PrNumber/comments"
+$reviews = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Owner/$Repo/pulls/$PrNumber/reviews"
+
+$obj = [PSCustomObject]@{
+    repository = $Repo
+    owner = $Owner
+    pr = $pr
+    issueComments = $issueComments
+    reviewComments = $reviewComments
+    reviews = $reviews
+    fetchedAt = [DateTime]::UtcNow
+}
+
+$obj | ConvertTo-Json -Depth 12 | Out-File -Encoding UTF8 'docs/CodeReview/pr1-coderabbit-report.json'
+
+$allBodies = @()
+if ($issueComments) { $allBodies += ($issueComments | ForEach-Object { $_.body }) }
+if ($reviewComments) { $allBodies += ($reviewComments | ForEach-Object { $_.body }) }
+
+$lines = @(
+    "# CodeRabbit Summary for PR #$PrNumber",
+    "Repository: $Owner/$Repo",
+    "PR URL: $($pr.html_url)",
+    "",
+    "## First 10 comments (truncated)"
+)
+
+$i = 0
+foreach ($b in $allBodies) {
+    if ($null -ne $b) {
+        $one = '- ' + ($b -replace "`r",' ' -replace "`n",' ')
+        if ($one.Length -gt 500) { $one = $one.Substring(0,500) }
+        $lines += $one
+        $i++
+        if ($i -ge 10) { break }
+    }
+}
+
+$lines -join "`n" | Out-File -Encoding UTF8 'docs/CodeReview/pr1-coderabbit-summary.md'
+Write-Host "Saved docs/CodeReview/pr1-coderabbit-report.json and docs/CodeReview/pr1-coderabbit-summary.md for PR #$PrNumber"
