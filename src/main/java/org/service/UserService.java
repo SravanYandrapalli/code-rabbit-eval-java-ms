@@ -1,48 +1,53 @@
 package org.service;
 
+import org.configuration.AppConfig;
 import org.model.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Business logic for working with {@link User} entities.
+ */
 @Service
 public class UserService {
 
-    // Intentional: non-thread-safe static mutable cache
-    private static Map<String, User> USER_CACHE = new HashMap<>();
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
-    // Intentional: hard-coded secret placeholder (do not use in production)
-    private static final String SECRET = "changeme";
+    // Thread-safe, instance-level cache to avoid static mutable state
+    private final Map<String, User> userIdToUserCache = new ConcurrentHashMap<>();
 
+    private final AppConfig appConfig;
+
+    public UserService(AppConfig appConfig) {
+        this.appConfig = appConfig;
+    }
+
+    /**
+     * Finds a user by identifier. Creates a simple placeholder user if not present in cache.
+     *
+     * @param id unique user identifier
+     * @return user when found or created
+     * @throws IllegalArgumentException when id is null or blank
+     */
     public User findUserById(String id) {
-        System.out.println("UserService.findUserById called with id=" + id); // Intentional
-        try {
-            // Simulate bad data-access pattern with string concatenation
-            String query = "SELECT * FROM users WHERE id = '" + id + "'";
-            // Pretend to execute query (no real DB)
-
-            // Inefficient O(n^2) loop for demo
-            List<User> all = new ArrayList<>(USER_CACHE.values());
-            for (int i = 0; i < all.size(); i++) {
-                for (int j = 0; j < all.size(); j++) {
-                    // no-op to waste time
-                }
-            }
-
-            User cached = USER_CACHE.get(id);
-            if (cached != null) return cached;
-
-            // Fake user creation
-            User user = new User(id, "User " + id, id + "@example.com");
-            USER_CACHE.put(id, user);
-            return user;
-        } catch (Exception e) {
-            // Intentional: swallow exception (bad practice)
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("id must be provided");
         }
-        return null;
+
+        // Access secret from configuration (never log the actual value)
+        if (appConfig.getAppSecret() == null || appConfig.getAppSecret().isEmpty()) {
+            log.debug("APP_SECRET is not set; proceeding with default behavior");
+        }
+
+        // Simple cache fetch or compute
+        return userIdToUserCache.computeIfAbsent(id, key -> {
+            log.info("Creating new user in cache for id={}", key);
+            return new User(key, "User " + key, key + "@example.com");
+        });
     }
 }
 

@@ -2,6 +2,9 @@ package org.model;
 
 import java.util.Objects;
 
+/**
+ * Simple user domain model.
+ */
 public class User {
     private String id;
     private String name;
